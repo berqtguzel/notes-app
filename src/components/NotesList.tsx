@@ -32,9 +32,33 @@ function NoteItem({
   editContent, 
   setEditContent 
 }: NoteItemProps) {
+  const [swipeDirection, setSwipeDirection] = useState<'left' | 'right' | null>(null);
+
   const swipeHandlers = useSwipeable({
-    onSwipedLeft: () => onStartEdit(note),
-    onSwipedRight: () => onDeleteNote(note.id),
+    onSwipedLeft: () => {
+      setSwipeDirection('left');
+      setTimeout(() => {
+        onStartEdit(note);
+        setSwipeDirection(null);
+      }, 300);
+    },
+    onSwipedRight: () => {
+      setSwipeDirection('right');
+      setTimeout(() => {
+        onDeleteNote(note.id);
+        setSwipeDirection(null);
+      }, 300);
+    },
+    onSwiping: (eventData) => {
+      if (eventData.deltaX > 50) {
+        setSwipeDirection('right');
+      } else if (eventData.deltaX < -50) {
+        setSwipeDirection('left');
+      }
+    },
+    onSwiped: () => {
+      setTimeout(() => setSwipeDirection(null), 300);
+    },
     trackMouse: false,
     delta: 50,
     swipeDuration: 500,
@@ -42,15 +66,17 @@ function NoteItem({
 
   const formatDate = (date: Date) => {
     const now = new Date();
-    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const noteDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const diffTime = today.getTime() - noteDate.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     
-    if (diffDays === 1) {
+    if (diffDays === 0) {
       return "Bugün";
-    } else if (diffDays === 2) {
+    } else if (diffDays === 1) {
       return "Dün";
     } else if (diffDays <= 7) {
-      return `${diffDays - 1} gün önce`;
+      return `${diffDays} gün önce`;
     } else {
       return date.toLocaleDateString('tr-TR', {
         day: 'numeric',
@@ -67,14 +93,39 @@ function NoteItem({
     });
   };
 
+  const getSwipeStyle = () => {
+    if (swipeDirection === 'right') {
+      return {
+        transform: 'translateX(100px) rotate(15deg)',
+        backgroundColor: '#ef4444',
+        color: 'white'
+      };
+    } else if (swipeDirection === 'left') {
+      return {
+        transform: 'translateX(-100px) rotate(-15deg)',
+        backgroundColor: '#3b82f6',
+        color: 'white'
+      };
+    }
+    return {};
+  };
+
   return (
     <div
       {...swipeHandlers}
-      className={`${note.color} rounded-xl p-6 shadow-lg transform hover:rotate-1 hover:scale-105 transition-all duration-200 relative group cursor-grab active:cursor-grabbing`}
+      className={`${note.color} rounded-xl p-6 shadow-lg transform hover:rotate-1 hover:scale-105 transition-all duration-300 relative group cursor-grab active:cursor-grabbing`}
       style={{
         transform: `rotate(${Math.random() * 4 - 2}deg)`,
+        ...getSwipeStyle()
       }}
     >
+      {/* Swipe yön göstergesi */}
+      {swipeDirection && (
+        <div className="absolute inset-0 flex items-center justify-center text-white font-bold text-lg z-10">
+          {swipeDirection === 'right' ? '🗑️ Siliniyor...' : '✏️ Düzenleniyor...'}
+        </div>
+      )}
+
       {/* Mobil swipe ipucu */}
       <div className="md:hidden absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
         <div className="bg-black bg-opacity-50 text-white px-3 py-1 rounded-full text-xs">
